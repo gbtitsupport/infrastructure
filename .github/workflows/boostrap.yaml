@@ -1,9 +1,5 @@
 name: Bootstrap Terraform Backend
 
-# Manual only — this creates the S3 bucket + DynamoDB table that every
-# other workflow's `backend "s3"` block depends on. Run once, from the
-# Actions tab. Safe to re-run (idempotent) but doesn't need to run
-# automatically on every push.
 on:
   workflow_dispatch: {}
 

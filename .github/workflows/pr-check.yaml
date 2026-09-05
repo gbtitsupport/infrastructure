@@ -1,11 +1,5 @@
 name: Terraform PR Check
 
-# Re-runs the plan on every PR into main, and posts/updates a table as a PR
-# comment so reviewers can double-check what will change before merge.
-# on:
-#   pull_request:
-#     branches:
-#       - main   # change to your default branch if it's not "main"
 
 on:
   workflow_dispatch: {}
@@ -13,7 +7,7 @@ on:
 permissions:
   id-token: write
   contents: read
-  pull-requests: write   # needed to post/update the PR comment
+  pull-requests: write  
 
 env:
   TF_WORKING_DIR: .
@@ -59,7 +53,7 @@ jobs:
         id: table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 "$GITHUB_WORKSPACE/.github/scripts/tf_plan_table.py" plan.json \
+          python3 "$GITHUB_WORKSPACE/.github/scripts/tf_plan_plan_table.py" plan.json \
             "Terraform Plan for PR #${{ github.event.pull_request.number }}" > plan_table.md
           echo "table_path=${{ env.TF_WORKING_DIR }}/plan_table.md" >> "$GITHUB_OUTPUT"
 

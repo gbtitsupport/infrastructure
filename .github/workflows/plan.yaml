@@ -13,8 +13,7 @@ permissions:
   contents: read
 
 env:
-  TF_WORKING_DIR: .   # change if your .tf files live in a subfolder, e.g. ./infra
-
+  TF_WORKING_DIR: . 
 jobs:
   validate-and-plan:
     runs-on: ubuntu-latest
@@ -61,5 +60,5 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           python3 scripts/bootstrap-backend.py
-          python3 scripts/table.py plan.json \
+          python3 scripts/plan_table.py plan.json \
             "Terraform Plan — ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
