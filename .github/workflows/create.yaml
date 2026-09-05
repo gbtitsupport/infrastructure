@@ -1,7 +1,10 @@
 name: Create Resources
 
 on:
-  workflow_dispatch: {}    
+  push:
+    branches:
+      - '**'
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
