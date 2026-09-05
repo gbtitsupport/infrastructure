@@ -7,3 +7,7 @@ terraform {
     encrypt        = true
   }
 }
+
+
+
+# STATE FOR TEST ENVIRONMENT
