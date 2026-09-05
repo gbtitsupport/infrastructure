@@ -131,6 +131,11 @@ def create_lock_table(dynamodb, table):
     print(f"[done] table '{table}' active")
 
 
+def generate_key():
+    suffix = secrets.token_hex(4) 
+    return f"{suffix}.terraform.tfstate"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Bootstrap a Terraform S3 backend.")
     parser.add_argument("--bucket", default=None, help="Exact S3 bucket name to use/create")
@@ -183,11 +188,14 @@ def main():
         with open(github_output, "a") as f:
             f.write(f"bucket_name={bucket_name}\n")
 
+
+    unqiue_key = generate_key()
+
     print("\nBootstrap complete. Your backend block:\n")
     print("terraform {")
     print('  backend "s3" {')
     print(f'    bucket         = "{bucket_name}"')
-    print('    key            = "<your-path>/terraform.tfstate"')
+    print(f'    key            = "{unqiue_key}/terraform.tfstate"')
     print(f'    region         = "{args.region}"')
     if not args.no_dynamodb:
         print(f'    dynamodb_table = "{args.table}"')
