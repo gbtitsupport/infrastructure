@@ -2,10 +2,13 @@ name: Terraform PR Check
 
 # Re-runs the plan on every PR into main, and posts/updates a table as a PR
 # comment so reviewers can double-check what will change before merge.
+# on:
+#   pull_request:
+#     branches:
+#       - main   # change to your default branch if it's not "main"
+
 on:
-  pull_request:
-    branches:
-      - main   # change to your default branch if it's not "main"
+  workflow_dispatch: {}
 
 permissions:
   id-token: write
