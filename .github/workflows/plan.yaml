@@ -1,12 +1,9 @@
 name: Terraform Validate & Plan
-
-# Runs on push to any branch, but ONLY when something under
-# test-environment/ or prod-environment/ actually changed — and only
-# plans the environment(s) whose folder changed, not both every time.
 on:
   push:
     branches:
       - '**'
+      - '!main'
     paths:
       - 'test-environment/**'
       - 'prod-environment/**'

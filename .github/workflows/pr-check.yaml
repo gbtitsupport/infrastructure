@@ -1,9 +1,4 @@
 name: Terraform PR Check
-
-# Re-runs the plan on PRs into main, but only for the environment folder(s)
-# a PR actually touches, and posts/updates a table as a PR comment so
-# reviewers can double-check what will change before merge. A PR touching
-# both folders gets two separate comments, one per environment.
 on:
   pull_request:
     branches:
@@ -15,7 +10,7 @@ on:
 permissions:
   id-token: write
   contents: read
-  pull-requests: write   # needed to post/update PR comments
+  pull-requests: write 
 
 jobs:
   detect-changes:
