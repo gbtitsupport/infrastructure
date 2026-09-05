@@ -1,0 +1,133 @@
+name: Terraform Destroy
+
+# Manual only — you don't want a destroy plan running on every push.
+# Trigger it from the Actions tab: Actions → Terraform Destroy → Run workflow.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_WORKING_DIR: .
+
+jobs:
+  destroy-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Destroy Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -destroy -input=false -out=tfplan-destroy -no-color
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan-destroy > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render destroy plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 "$GITHUB_WORKSPACE/.github/scripts/tf_plan_table.py" plan.json \
+            "⚠️ Terraform DESTROY Plan" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload destroy plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-destroy
+          path: ${{ env.TF_WORKING_DIR }}/tfplan-destroy
+          retention-days: 5
+
+  destroy-apply-test:
+    needs: destroy-plan
+    runs-on: ubuntu-latest
+    # Separate environment from "production" apply, so a destroy needs its
+    # own approval and isn't covered by the same reviewers/button as a
+    # normal apply. Configure it the same way: Settings → Environments →
+    # New environment → "production-destroy" → Required reviewers.
+    # (If you'd rather share one approval group, just point this at
+    # "production" instead.)
+    environment: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Download destroy plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-destroy
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply Destroy
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan-destroy
+
+  destroy-apply-live:
+    needs: destroy-plan
+    runs-on: ubuntu-latest
+    # Separate environment from "production" apply, so a destroy needs its
+    # own approval and isn't covered by the same reviewers/button as a
+    # normal apply. Configure it the same way: Settings → Environments →
+    # New environment → "production-destroy" → Required reviewers.
+    # (If you'd rather share one approval group, just point this at
+    # "production" instead.)
+    environment: live
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Download destroy plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-destroy
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply Destroy
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan-destroy
