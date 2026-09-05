@@ -81,7 +81,7 @@ jobs:
         id: table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan for PR #${{ github.event.pull_request.number }} → test" > plan_table.md
           echo "table_path=${{ env.TF_WORKING_DIR }}/plan_table.md" >> "$GITHUB_OUTPUT"
 
@@ -162,7 +162,7 @@ jobs:
         id: table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan for PR #${{ github.event.pull_request.number }} → prod" > plan_table.md
           echo "table_path=${{ env.TF_WORKING_DIR }}/plan_table.md" >> "$GITHUB_OUTPUT"
 

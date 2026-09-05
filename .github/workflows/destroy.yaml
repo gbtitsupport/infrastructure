@@ -82,7 +82,7 @@ jobs:
       - name: Render destroy plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "⚠️ Terraform DESTROY Plan — ${{ inputs.environment }} (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload destroy plan artifact

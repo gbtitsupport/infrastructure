@@ -93,7 +93,7 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan — test (triggered by ${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload plan artifact
@@ -142,7 +142,7 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan — prod (triggered by ${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload plan artifact
