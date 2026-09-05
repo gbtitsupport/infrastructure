@@ -195,7 +195,7 @@ def main():
     print("terraform {")
     print('  backend "s3" {')
     print(f'    bucket         = "{bucket_name}"')
-    print(f'    key            = "{unqiue_key}/terraform.tfstate"')
+    print(f'    key            = "{unqiue_key}"')
     print(f'    region         = "{args.region}"')
     if not args.no_dynamodb:
         print(f'    dynamodb_table = "{args.table}"')
