@@ -1,10 +1,12 @@
 name: Terraform Validate & Plan
 
 # Runs on every push to every branch: fmt/validate/plan, table in the job summary.
+# on:
+#   push:
+#     branches:
+#       - '**'
 on:
-  push:
-    branches:
-      - '**'
+    workflow_dispatch: {}
 
 permissions:
   id-token: write
