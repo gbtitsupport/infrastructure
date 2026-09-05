@@ -34,6 +34,6 @@ jobs:
 
       - name: Bootstrap Terraform backend
         run: |
-          python3 scripts/bootstrap_backend.py \
+          python3 scripts/bootstrap-backend.py \
           --bucket-prefix gbt-infra-terraform-state \
           --region eu-west-1
