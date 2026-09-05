@@ -60,5 +60,6 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 "$GITHUB_WORKSPACE/.github/scripts/tf_plan_table.py" plan.json \
+          python3 scripts/bootstrap-backend.py
+          python3 scripts/table.py plan.json \
             "Terraform Plan — ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
