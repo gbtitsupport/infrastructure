@@ -1,14 +1,5 @@
 name: Terraform Apply
 
-# Two ways to trigger a deploy:
-#  1. Automatic: push to main that touches test-environment/ and/or
-#     prod-environment/ — only the folder(s) that actually changed get
-#     planned + applied (can be both, if one push touches both).
-#  2. Manual: Actions tab -> Run workflow -> pick environment explicitly,
-#     independent of what changed (useful for redeploying without a new
-#     commit, or deploying a specific branch/commit on demand).
-# Either way, the matching approval gate still applies — a manual "prod"
-# run needs prod's required reviewers exactly like an automatic one does.
 on:
   push:
     branches:
@@ -33,8 +24,6 @@ permissions:
 
 jobs:
   detect-changes:
-    # Only meaningful for a push event (there's no "diff" on a manual
-    # dispatch) — the environment there comes straight from the dropdown.
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
@@ -59,7 +48,7 @@ jobs:
     if: always() && ((github.event_name == 'workflow_dispatch' && inputs.environment == 'test') || (github.event_name == 'push' && needs.detect-changes.outputs.test_changed == 'true'))
     runs-on: ubuntu-latest
     env:
-      TF_WORKING_DIR: test
+      TF_WORKING_DIR: test-environment
     steps:
       - name: Checkout
         uses: actions/checkout@v4
