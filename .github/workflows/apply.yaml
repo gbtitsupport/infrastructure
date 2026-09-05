@@ -1,20 +1,65 @@
 name: Terraform Apply
 
+# Two ways to trigger a deploy:
+#  1. Automatic: push to main that touches test-environment/ and/or
+#     prod-environment/ — only the folder(s) that actually changed get
+#     planned + applied (can be both, if one push touches both).
+#  2. Manual: Actions tab -> Run workflow -> pick environment explicitly,
+#     independent of what changed (useful for redeploying without a new
+#     commit, or deploying a specific branch/commit on demand).
+# Either way, the matching approval gate still applies — a manual "prod"
+# run needs prod's required reviewers exactly like an automatic one does.
 on:
   push:
     branches:
       - main
+    paths:
+      - 'test-environment/**'
+      - 'prod-environment/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        default: test
+        options:
+          - test
+          - prod
 
 permissions:
   id-token: write
   contents: read
 
-env:
-  TF_WORKING_DIR: .
-
 jobs:
-  plan:
+  detect-changes:
+    # Only meaningful for a push event (there's no "diff" on a manual
+    # dispatch) — the environment there comes straight from the dropdown.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    outputs:
+      test_changed: ${{ steps.filter.outputs.test }}
+      prod_changed: ${{ steps.filter.outputs.prod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect which environment folder(s) changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            test:
+              - 'test-environment/**'
+            prod:
+              - 'prod-environment/**'
+
+  plan-test:
+    needs: detect-changes
+    if: always() && ((github.event_name == 'workflow_dispatch' && inputs.environment == 'test') || (github.event_name == 'push' && needs.detect-changes.outputs.test_changed == 'true'))
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +79,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -out=tfplan -no-color
+        run: terraform plan -input=false -no-color -out=tfplan
 
       - name: Convert plan to JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -49,21 +94,71 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           python3 scripts/plan_table.py plan.json \
-            "Terraform Plan — main" >> "$GITHUB_STEP_SUMMARY"
+            "Terraform Plan — test (triggered by ${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
 
-      # Upload the exact binary plan so `apply` runs precisely what was
-      # reviewed above — no re-plan, no drift between review and apply.
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-test
           path: ${{ env.TF_WORKING_DIR }}/tfplan
           retention-days: 5
 
-  apply-live:
-    needs: plan
+  plan-prod:
+    needs: detect-changes
+    if: always() && ((github.event_name == 'workflow_dispatch' && inputs.environment == 'prod') || (github.event_name == 'push' && needs.detect-changes.outputs.prod_changed == 'true'))
     runs-on: ubuntu-latest
-    environment: live
+    env:
+      TF_WORKING_DIR: prod-environment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 scripts/plan_table.py plan.json \
+            "Terraform Plan — prod (triggered by ${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-prod
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 5
+
+  apply-test:
+    needs: [detect-changes, plan-test]
+    if: always() && needs.plan-test.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: test-environment
+    environment: test 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,18 +179,20 @@ jobs:
       - name: Download plan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-test
           path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -input=false -auto-approve tfplan
 
-
-  apply-test:
-    needs: plan
+  apply-prod:
+    needs: [detect-changes, plan-prod]
+    if: always() && needs.plan-prod.result == 'success'
     runs-on: ubuntu-latest
-    environment: test
+    env:
+      TF_WORKING_DIR: prod-environment
+    environment: prod 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -116,7 +213,7 @@ jobs:
       - name: Download plan artifact
         uses: actions/download-artifact@v4
         with:
-          name: tfplan
+          name: tfplan-prod
           path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
