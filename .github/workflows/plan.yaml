@@ -83,7 +83,7 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
             "Terraform Plan — test (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
 
   validate-and-plan-prod:
@@ -134,5 +134,5 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 sscripts/plan_table.py plan.json \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
             "Terraform Plan — prod (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
