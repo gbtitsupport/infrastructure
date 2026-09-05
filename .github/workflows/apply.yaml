@@ -50,7 +50,7 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/table.py" plan.json \
+          python3 scripts/table.py plan.json \
             "Terraform Plan — main" >> "$GITHUB_STEP_SUMMARY"
 
       # Upload the exact binary plan so `apply` runs precisely what was
