@@ -1,0 +1,62 @@
+name: Terraform Validate & Plan
+
+# Runs on every push to every branch: fmt/validate/plan, table in the job summary.
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TF_WORKING_DIR: .   # change if your .tf files live in a subfolder, e.g. ./infra
+
+jobs:
+  validate-and-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+        continue-on-error: true   # warn, don't fail the run over formatting
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -out=tfplan -no-color
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 "$GITHUB_WORKSPACE/.github/scripts/tf_plan_table.py" plan.json \
+            "Terraform Plan — ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
