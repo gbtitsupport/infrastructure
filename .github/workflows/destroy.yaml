@@ -1,0 +1,126 @@
+name: Terraform Destroy
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options:
+          - test
+          - prod
+      confirm:
+        description: 'Type the environment name exactly to confirm (e.g. "prod")'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-input:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirmation must match selected environment
+        run: |
+          if [ "${{ inputs.confirm }}" != "${{ inputs.environment }}" ]; then
+            echo "::error::Typed confirmation '${{ inputs.confirm }}' does not match selected environment '${{ inputs.environment }}'. Aborting."
+            exit 1
+          fi
+
+  determine-folder:
+    needs: validate-input
+    runs-on: ubuntu-latest
+    outputs:
+      working_dir: ${{ steps.set-dir.outputs.working_dir }}
+    steps:
+      - name: Map environment to folder
+        id: set-dir
+        run: |
+          if [ "${{ inputs.environment }}" = "prod" ]; then
+            echo "working_dir=prod-environment" >> "$GITHUB_OUTPUT"
+          else
+            echo "working_dir=test-environment" >> "$GITHUB_OUTPUT"
+          fi
+
+  destroy-plan:
+    needs: determine-folder
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: ${{ needs.determine-folder.outputs.working_dir }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Destroy Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -destroy -input=false -no-color -out=tfplan-destroy
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan-destroy > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render destroy plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
+            "⚠️ Terraform DESTROY Plan — ${{ inputs.environment }} (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload destroy plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-destroy-${{ inputs.environment }}
+          path: ${{ env.TF_WORKING_DIR }}/tfplan-destroy
+          retention-days: 5
+
+  destroy-apply:
+    needs: [determine-folder, destroy-plan]
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: ${{ needs.determine-folder.outputs.working_dir }}
+    environment: ${{ inputs.environment == 'prod' && 'production-destroy' || 'test-destroy' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Download destroy plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-destroy-${{ inputs.environment }}
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply Destroy
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan-destroy

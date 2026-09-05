@@ -5,7 +5,8 @@ provider "aws" {
     tags = {
       Project     = "gbt cloud infrastructure"
       ManagedBy   = "terraform"
-      Owner       = "pipeline-deployer "
+      Owner       = "pipeline-deployer"
+      Environment = "test"
     }
   }
 }

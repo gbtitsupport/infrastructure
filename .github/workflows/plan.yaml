@@ -1,23 +1,48 @@
 name: Terraform Validate & Plan
 
-# Runs on every push to every branch: fmt/validate/plan, table in the job summary.
-# on:
-#   push:
-#     branches:
-#       - '**'
+# Runs on push to any branch, but ONLY when something under
+# test-environment/ or prod-environment/ actually changed — and only
+# plans the environment(s) whose folder changed, not both every time.
 on:
-    workflow_dispatch: {}
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'test-environment/**'
+      - 'prod-environment/**'
 
 permissions:
   id-token: write
   contents: read
 
-env:
-  TF_WORKING_DIR: .   # change if your .tf files live in a subfolder, e.g. ./infra
-
 jobs:
-  validate-and-plan:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      test_changed: ${{ steps.filter.outputs.test }}
+      prod_changed: ${{ steps.filter.outputs.prod }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+
+      - name: Detect which environment folder(s) changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            test:
+              - 'test-environment/**'
+            prod:
+              - 'prod-environment/**'
+
+  validate-and-plan-test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.test_changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: test-environment
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +63,7 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
-        continue-on-error: true   # warn, don't fail the run over formatting
+        continue-on-error: true
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -60,6 +85,56 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 scripts/bootstrap-backend.py
-          python3 scripts/table.py plan.json \
-            "Terraform Plan — ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
+            "Terraform Plan — test (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
+
+  validate-and-plan-prod:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.prod_changed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: prod-environment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Format Check
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -out=tfplan -no-color
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
+            "Terraform Plan — prod (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
