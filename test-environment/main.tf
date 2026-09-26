@@ -20,3 +20,9 @@ module "ecr" {
     { prefix = "test", keep = 10 }
   ]
 }
+
+module "ec2" {
+  source        = "../modules/ec2"
+  instance_type = "t4g.micro"
+  user_data     = file("user_data.sh")
+}
