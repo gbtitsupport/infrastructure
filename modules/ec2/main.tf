@@ -55,7 +55,6 @@ resource "aws_instance" "web" {
   instance_type               = var.instance_type
   subnet_id                   = data.aws_subnet.default.id
   vpc_security_group_ids      = [aws_security_group.web.id]
-  user_data                   = var.user_data
   user_data_replace_on_change = true
 
   root_block_device {

@@ -9,8 +9,3 @@ variable "instance_type" {
   type        = string
   default     = ""
 }
-
-variable "user_data" {
-  description = "configuration script"
-  type        = string
-}
