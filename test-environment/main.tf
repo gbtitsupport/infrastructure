@@ -11,7 +11,6 @@ provider "aws" {
   }
 }
 
-
 module "ecr" {
   source = "../modules/ecr"
 
@@ -21,7 +20,18 @@ module "ecr" {
   ]
 }
 
+module "iam_role" {
+  source = "../modules/iam"
+
+  name_prefix     = "gbt-web-"
+  attach_ssm      = true
+  attach_ecr_pull = true
+}
+
 module "ec2" {
   source        = "../modules/ec2"
   instance_type = "t4g.micro"
+  tags = {
+    App = "test-content-service"
+  }
 }

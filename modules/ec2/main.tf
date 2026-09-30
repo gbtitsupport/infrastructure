@@ -55,8 +55,21 @@ resource "aws_instance" "web" {
   instance_type               = var.instance_type
   subnet_id                   = data.aws_subnet.default.id
   vpc_security_group_ids      = [aws_security_group.web.id]
-  user_data_replace_on_change = true
 
+  user_data = <<-EOF
+    #!/bin/bash
+    set -euo pipefail
+    dnf install -y docker amazon-ecr-credential-helper
+    systemctl enable --now docker
+    mkdir -p /root/.docker
+    echo '{"credsStore":"ecr-login"}' > /root/.docker/config.json
+  EOF
+
+  metadata_options {
+    http_tokens = "required"
+  }
+
+  tags = var.tags
   root_block_device {
     encrypted = true
   }

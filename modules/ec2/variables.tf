@@ -9,3 +9,9 @@ variable "instance_type" {
   type        = string
   default     = ""
 }
+
+variable "tags" {
+  type        = map(string)
+  description = "A mapping of additional resource tags"
+  default     = {}
+}
