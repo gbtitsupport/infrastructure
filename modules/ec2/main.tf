@@ -18,6 +18,7 @@ data "aws_subnet" "default" {
 }
 
 # Existing instance profile, created manually
+# any role you attach to an EC2 instance has to go through an instance profile.
 data "aws_iam_instance_profile" "web" {
   name = var.instance_profile_name
 }
