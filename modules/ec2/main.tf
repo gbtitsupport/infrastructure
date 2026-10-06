@@ -17,6 +17,11 @@ data "aws_subnet" "default" {
   default_for_az    = true
 }
 
+# Existing instance profile, created manually
+data "aws_iam_instance_profile" "web" {
+  name = var.instance_profile_name
+}
+
 resource "aws_security_group" "web" {
   name_prefix = "web-"
   description = "Allow web inbound traffic"
@@ -42,8 +47,17 @@ resource "aws_vpc_security_group_egress_rule" "all" {
   ip_protocol       = "-1"
 }
 
+# Pick the AMI that matches the instance type's CPU (ARM or x86)
+data "aws_ec2_instance_type" "this" {
+  instance_type = var.instance_type
+}
+
+locals {
+  arch = contains(data.aws_ec2_instance_type.this.supported_architectures, "arm64") ? "arm64" : "x86_64"
+}
+
 data "aws_ssm_parameter" "al2023" {
-  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-${local.arch}"
 }
 
 locals {
@@ -51,10 +65,11 @@ locals {
 }
 
 resource "aws_instance" "web" {
-  ami                         = local.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnet.default.id
-  vpc_security_group_ids      = [aws_security_group.web.id]
+  ami                    = local.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = data.aws_subnet.default.id
+  vpc_security_group_ids = [aws_security_group.web.id]
+  iam_instance_profile   = data.aws_iam_instance_profile.web.name
 
   user_data = <<-EOF
     #!/bin/bash
@@ -64,15 +79,17 @@ resource "aws_instance" "web" {
     mkdir -p /root/.docker
     echo '{"credsStore":"ecr-login"}' > /root/.docker/config.json
   EOF
+  user_data_replace_on_change = true
 
   metadata_options {
     http_tokens = "required"
   }
 
-  tags = var.tags
   root_block_device {
     encrypted = true
   }
+
+  tags = merge(var.tags, { App = "${var.environment}-content-management-service" })
 
   lifecycle {
     ignore_changes = [ami]
