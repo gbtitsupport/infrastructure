@@ -33,5 +33,5 @@ module "ec2" {
 
 module "dynamodb" {
   source = "../modules/dynamo_db"
-  name   = "content-management-service-db"
+  name   = "cms-db-test"
 }
