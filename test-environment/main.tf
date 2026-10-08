@@ -32,6 +32,18 @@ module "ec2" {
 // dynamodb provisiong
 
 module "dynamodb" {
-  source = "../modules/dynamo_db"
-  name   = "cms-db-test"
+  source      = "../modules/dynamo_db"
+  environment = "test"
+}
+
+//s3 bucket 
+
+module "s3-object-test" {
+  source           = "../modules/s3"
+  environment      = "test"
+  enable_website   = false
+  policy_action    = ["s3:GetObject", "s3:PutObject"]
+  policy_effect    = "Allow"
+  policy_principal = "*"
+  policy_sid       = "PublicReadGetObject"
 }
