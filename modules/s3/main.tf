@@ -27,7 +27,7 @@ resource "aws_s3_bucket_public_access_block" "public_access_block" {
   ignore_public_acls      = false
   restrict_public_buckets = false
 
-  depends_on = [aws_s3_bucket.bucket]
+  depends_on = [aws_s3_bucket.s3_bucket]
 }
 
 
