@@ -32,6 +32,6 @@ module "ec2" {
 // dynamodb provisiong
 
 module "dynamodb" {
-  source        = "../modules/dynamo_db"
-  name = "content-management-service-db"
+  source = "../modules/dynamo_db"
+  name   = "content-management-service-db"
 }
