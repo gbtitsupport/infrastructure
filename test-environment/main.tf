@@ -32,7 +32,7 @@ module "ec2" {
 // dynamodb provisiong
 
 module "dynamodb" {
-  source        = "../modules/dynamo_db"
+  source      = "../modules/dynamo_db"
   environment = "test"
 }
 
