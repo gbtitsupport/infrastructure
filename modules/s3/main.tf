@@ -42,14 +42,14 @@ resource "aws_s3_bucket_policy" "policy" {
         Principal = {
           AWS = var.policy_principal
         }
-        Resource = [aws_s3_bucket.bucket.arn,"${aws_s3_bucket.bucket.arn}/*",]
+        Resource = [aws_s3_bucket.s3_bucket.arn,"${aws_s3_bucket.s3_bucket.arn}/*",]
         Sid      = var.policy_sid
       }
     ]
     Version = "2012-10-17"
   })
   depends_on = [
-    aws_s3_bucket.bucket,
+    aws_s3_bucket.s3_bucket,
     aws_s3_bucket_public_access_block.public_access_block
   ]
 }
