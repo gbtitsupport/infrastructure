@@ -11,6 +11,8 @@ provider "aws" {
   }
 }
 
+//  ecr provisioning
+
 module "ecr" {
   source = "../modules/ecr"
 
@@ -20,8 +22,16 @@ module "ecr" {
   ]
 }
 
+// ec2 provisioning
 module "ec2" {
   source        = "../modules/ec2"
   instance_type = "t4g.micro"
   environment   = "test"
+}
+
+// dynamodb provisiong
+
+module "dynamodb" {
+  source        = "../modules/dynamo_db"
+  name = "content-management-service-db"
 }
