@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "table" {
-  name           = var.name
+  name           = "cms-db-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "pk"
   range_key      = "sk"
