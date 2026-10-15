@@ -35,7 +35,7 @@ jobs:
               - 'test-environment/**'
             prod:
               - 'prod-environment/**'
-            shared
+            shared:
               - 'shared-environment/**'
 
   validate-and-plan-test:
