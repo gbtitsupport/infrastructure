@@ -42,6 +42,7 @@ resource "aws_route53_record" "web_api_test" {
   type    = "A"
   ttl     = 60
   records = [module.ec2.public_ip]
+  allow_overwrite = true
 }
 
 // dynamodb provisiong
