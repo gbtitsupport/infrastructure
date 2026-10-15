@@ -37,11 +37,12 @@ data "aws_route53_zone" "zone" {
 }
 
 resource "aws_route53_record" "web_api_test" {
-  zone_id = data.aws_route53_zone.zone.zone_id
-  name    = "test.api.gbt-church.com"
-  type    = "A"
-  ttl     = 60
-  records = [module.ec2.public_ip]
+  zone_id         = data.aws_route53_zone.zone.zone_id
+  name            = "test.api.gbt-church.com"
+  type            = "A"
+  ttl             = 60
+  records         = [module.ec2.public_ip]
+  allow_overwrite = true
 }
 
 // dynamodb provisiong
