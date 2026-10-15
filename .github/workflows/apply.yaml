@@ -45,7 +45,7 @@ jobs:
               - 'test-environment/**'
             prod:
               - 'prod-environment/**'
-            shared
+            shared:
               - 'shared-environment/**'
 
   plan-test:
