@@ -11,6 +11,7 @@ provider "aws" {
   }
 }
 
+
 //  ecr provisioning
 
 module "ecr" {
@@ -27,6 +28,20 @@ module "ec2" {
   source        = "../modules/ec2"
   instance_type = "t4g.micro"
   environment   = "test"
+}
+
+
+// lookup for hosted zones
+data "aws_route53_zone" "zone" {
+  name = "gbt-church.com"
+}
+
+resource "aws_route53_record" "web_api_test" {
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = "test.api.gbt-church.com"
+  type    = "A"
+  ttl     = 60
+  records = [module.ec2.public_ip]
 }
 
 // dynamodb provisiong
