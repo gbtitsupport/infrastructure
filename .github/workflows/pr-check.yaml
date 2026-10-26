@@ -121,7 +121,7 @@ jobs:
     if: needs.detect-changes.outputs.shared_changed == 'true'
     runs-on: ubuntu-latest
     env:
-      TF_WORKING_DIR: test-environment
+      TF_WORKING_DIR: shared-environment
     steps:
       - name: Checkout
         uses: actions/checkout@v4
