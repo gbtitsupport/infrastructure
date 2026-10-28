@@ -16,7 +16,6 @@ provider "aws" {
 module "ec2" {
   source        = "../modules/ec2"
   instance_type = "t4g.micro"
-  environment   = "test"
 }
 
 
