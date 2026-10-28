@@ -90,7 +90,7 @@ resource "aws_instance" "web" {
     encrypted = true
   }
 
-  tags = merge(var.tags, { App = "${var.environment}-content-management-service" })
+  tags = merge(var.tags, { ServerName = "nelson" })
 
   lifecycle {
     ignore_changes = [ami]

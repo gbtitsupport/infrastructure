@@ -20,8 +20,3 @@ variable "instance_profile_name" {
   type        = string
   default     = "web-ec2"
 }
-
-variable "environment" {
-  description = "Used in the App tag that the deploy script targets"
-  type        = string
-}

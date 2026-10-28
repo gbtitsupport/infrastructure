@@ -6,7 +6,7 @@ provider "aws" {
       Project     = "gbt cloud infrastructure"
       ManagedBy   = "terraform"
       Owner       = "pipeline-deployer"
-      Environment = "prod"
+      Environment = "shared"
     }
   }
 }
