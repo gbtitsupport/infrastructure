@@ -52,6 +52,9 @@ jobs:
     needs: detect-changes
     if: always() && ((github.event_name == 'workflow_dispatch' && inputs.environment == 'test') || (github.event_name == 'push' && needs.detect-changes.outputs.test_changed == 'true'))
     runs-on: ubuntu-latest
+    concurrency:
+      group: tf-state-test
+      cancel-in-progress: false
     env:
       TF_WORKING_DIR: test-environment
     steps:
@@ -199,6 +202,9 @@ jobs:
     needs: [detect-changes, plan-test]
     if: always() && needs.plan-test.result == 'success'
     runs-on: ubuntu-latest
+    concurrency:
+      group: tf-state-test
+      cancel-in-progress: false
     env:
       TF_WORKING_DIR: test-environment
     environment: test 

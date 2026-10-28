@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-            fetch-depth: 0
+          fetch-depth: 0
 
       - name: Detect which environment folder(s) changed
         id: filter
@@ -42,6 +42,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.test_changed == 'true'
     runs-on: ubuntu-latest
+    concurrency:
+      group: tf-state-test
+      cancel-in-progress: false
     env:
       TF_WORKING_DIR: test-environment
     steps:
@@ -64,7 +67,6 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
-        continue-on-error: false
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -72,7 +74,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -out=tfplan -no-color
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan -no-color
 
       - name: Convert plan to JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -86,13 +88,16 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan — test (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
 
   validate-and-plan-shared:
     needs: detect-changes
     if: needs.detect-changes.outputs.shared_changed == 'true'
     runs-on: ubuntu-latest
+    concurrency:
+      group: tf-state-shared
+      cancel-in-progress: false
     env:
       TF_WORKING_DIR: shared-environment
     steps:
@@ -115,7 +120,6 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
-        continue-on-error: false
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -123,7 +127,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -out=tfplan -no-color
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan -no-color
 
       - name: Convert plan to JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -137,13 +141,16 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan — shared (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
-          
+
   validate-and-plan-prod:
     needs: detect-changes
     if: needs.detect-changes.outputs.prod_changed == 'true'
     runs-on: ubuntu-latest
+    concurrency:
+      group: tf-state-prod
+      cancel-in-progress: false
     env:
       TF_WORKING_DIR: prod-environment
     steps:
@@ -166,7 +173,6 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
-        continue-on-error: true
 
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -174,7 +180,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false -out=tfplan -no-color
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan -no-color
 
       - name: Convert plan to JSON
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -188,5 +194,5 @@ jobs:
       - name: Render plan as a table
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json  \
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
             "Terraform Plan — prod (${{ env.TF_WORKING_DIR }}/)" >> "$GITHUB_STEP_SUMMARY"
