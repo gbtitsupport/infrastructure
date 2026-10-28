@@ -12,17 +12,6 @@ provider "aws" {
 }
 
 
-//  ecr provisioning
-
-module "ecr" {
-  source = "../modules/ecr"
-
-  repo_name = "gbt-artifacts"
-  tag_rules = [
-    { prefix = "test", keep = 10 }
-  ]
-}
-
 // ec2 provisioning
 module "ec2" {
   source        = "../modules/ec2"

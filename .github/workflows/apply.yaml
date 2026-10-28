@@ -7,6 +7,7 @@ on:
     paths:
       - 'test-environment/**'
       - 'prod-environment/**'
+      - 'shared-environment/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -17,6 +18,7 @@ on:
         options:
           - test
           - prod
+          - shared
 
 permissions:
   id-token: write
@@ -29,6 +31,7 @@ jobs:
     outputs:
       test_changed: ${{ steps.filter.outputs.test }}
       prod_changed: ${{ steps.filter.outputs.prod }}
+      shared_changed: ${{ steps.filter.outputs.shared }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,6 +45,8 @@ jobs:
               - 'test-environment/**'
             prod:
               - 'prod-environment/**'
+            shared:
+              - 'shared-environment/**'
 
   plan-test:
     needs: detect-changes
@@ -89,6 +94,55 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-test
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 5
+
+  plan-shared:
+    needs: detect-changes
+    if: always() && ((github.event_name == 'workflow_dispatch' && inputs.environment == 'shared') || (github.event_name == 'push' && needs.detect-changes.outputs.shared_changed == 'true'))
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: shared-environment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Convert plan to JSON
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform show -json tfplan > plan.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Render plan as a table
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          python3 "$GITHUB_WORKSPACE/scripts/plan_table.py" plan.json \
+            "Terraform Plan — shared (triggered by ${{ github.event_name }})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-shared
           path: ${{ env.TF_WORKING_DIR }}/tfplan
           retention-days: 5
 
@@ -169,6 +223,40 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan-test
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+  apply-shared:
+    needs: [detect-changes, plan-shared]
+    if: always() && needs.plan-shared.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      TF_WORKING_DIR: shared-environment
+    environment: shared 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_ROLE_NAME }}
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-shared
           path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
