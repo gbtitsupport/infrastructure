@@ -1,7 +1,7 @@
 locals {
   # Add "prod" here when you're ready for a prod user pool
-  cognito_environments = toset(["test"])
-  cognito_from_email = "GBT Church <noreply@gbt-church.com>"
+  cognito_environments  = toset(["test"])
+  cognito_from_email    = "GBT Church <noreply@gbt-church.com>"
   ssm_parameter_default = "String"
 }
 
