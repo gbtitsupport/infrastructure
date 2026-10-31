@@ -50,7 +50,7 @@ resource "aws_route53_record" "web_api_test" {
 module "dynamodb" {
   source      = "../modules/dynamo_db"
   environment = local.app_params.ENVIRONMENT
-  name        = local.app_params.DATABASE_NAME
+  name        = local.app_params.DYNAMODB_TABLE_NAME
 }
 
 //s3 bucket 
