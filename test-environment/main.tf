@@ -13,14 +13,16 @@ provider "aws" {
 
 
 locals {
+  environment = "test"
+  region      = "eu-west-1"
+  table_base  = "cms-db"
+
   app_params = {
-    ENVIRONMENT         = "test"
-    REGION              = "eu-west-1"
-    DATABASE_NAME       = "cms-db"
-    DYNAMODB_TABLE_NAME = "${local.app_params.database_name}-${local.app_params.ENVIRONMENT}"
+    ENVIRONMENT         = local.environment
+    REGION              = local.region
+    DYNAMODB_TABLE_NAME = "${local.table_base}-${local.environment}"
   }
 }
-
 
 // ec2 provisioning
 module "ec2" {
