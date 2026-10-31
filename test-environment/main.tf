@@ -12,6 +12,16 @@ provider "aws" {
 }
 
 
+locals {
+  app_params = {
+    ENVIRONMENT         = "test"
+    REGION              = "eu-west-1"
+    DATABASE_NAME       = "cms-db"
+    DYNAMODB_TABLE_NAME = "${local.app_params.database_name}-${local.app_params.ENVIRONMENT}"
+  }
+}
+
+
 // ec2 provisioning
 module "ec2" {
   source        = "../modules/ec2"
@@ -37,7 +47,8 @@ resource "aws_route53_record" "web_api_test" {
 
 module "dynamodb" {
   source      = "../modules/dynamo_db"
-  environment = "test"
+  environment = local.app_params.ENVIRONMENT
+  name        = local.app_params.DATABASE_NAME
 }
 
 //s3 bucket 
@@ -50,4 +61,12 @@ module "s3-object-test" {
   policy_effect    = "Allow"
   policy_principal = "*"
   policy_sid       = "PublicReadGetObject"
+}
+
+resource "aws_ssm_parameter" "app" {
+  for_each = local.app_params
+
+  name  = "/web/test/${each.key}"
+  type  = "String"
+  value = each.value
 }
